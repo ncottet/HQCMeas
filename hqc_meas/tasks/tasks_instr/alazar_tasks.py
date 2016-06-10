@@ -26,6 +26,10 @@ class DemodAlazarTask(InstrumentTask):
     
     timeaftertrigB = Str('0').tag(pref=True)
  
+    timestep = Str('0').tag(pref=True)
+
+    timestepB = Str('0').tag(pref=True)
+
     tracetimeaftertrig = Str('0').tag(pref=True)
     
     tracetimeaftertrigB = Str('0').tag(pref=True)
@@ -39,10 +43,6 @@ class DemodAlazarTask(InstrumentTask):
     tracedurationB = Str('0').tag(pref=True)
 
     tracesbuffer = Str('20').tag(pref=True)
-	
-    samplingtime = Str('1000').tag(pref=True)
-    
-    samplingtimeB = Str('0').tag(pref=True)
 
     tracesnumber = Str('1000').tag(pref=True)
 
@@ -52,6 +52,13 @@ class DemodAlazarTask(InstrumentTask):
     driver_list = ['Alazar935x']
 
     task_database_entries = set_default({'Demod': {}, 'Trace': {}})
+    
+    def format_string(self, string, factor, n):
+        s = self.format_and_eval_string(string)
+        if isinstance(s, list) or isinstance(s, tuple) or isinstance(s, np.ndarray):
+            return [elem*factor for elem in s]
+        else:
+            return [s*factor]*n
 
     def check(self, *args, **kwargs):
         """
@@ -68,24 +75,17 @@ class DemodAlazarTask(InstrumentTask):
         if not (self.format_and_eval_string(self.tracesnumber) >= 1000):
             test = False
             traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                cleandoc('''At least 1000 traces must be recorded. Please take real measurements and not noisy craps.''')
+                cleandoc('''At least 1000 traces must be recorded. Please make real measurements and not noisy s***.''')
 
-        time = [self.format_and_eval_string(elem) for elem in self.timeaftertrig.split(',')]
-        duration = [self.format_and_eval_string(elem) for elem in self.duration.split(',')]
-        timeB = [self.format_and_eval_string(elem) for elem in self.timeaftertrigB.split(',')]
-        durationB = [self.format_and_eval_string(elem) for elem in self.durationB.split(',')]
-        tracetime = [self.format_and_eval_string(elem) for elem in self.tracetimeaftertrig.split(',')]
-        traceduration = [self.format_and_eval_string(elem) for elem in self.traceduration.split(',')]
-        tracetimeB = [self.format_and_eval_string(elem) for elem in self.tracetimeaftertrigB.split(',')]
-        tracedurationB = [self.format_and_eval_string(elem) for elem in self.tracedurationB.split(',')]
-        tablesamplingtime = [self.format_and_eval_string(elem) for elem in self.samplingtime.split(',')]
-        tablesamplingtimeB = [self.format_and_eval_string(elem) for elem in self.samplingtimeB.split(',')]
-   
-        if not (tablesamplingtime[0] >= 0 and tablesamplingtimeB[0] >= 0):
-             test = False
-             traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                    cleandoc('''The sampling time should be positive.''')
-   
+        time = self.format_string(self.timeaftertrig, 10**-9, 1)
+        duration = self.format_string(self.duration, 10**-9, 1)
+        timeB = self.format_string(self.timeaftertrigB, 10**-9, 1)
+        durationB = self.format_string(self.durationB, 10**-9, 1)
+        tracetime = self.format_string(self.tracetimeaftertrig, 10**-9, 1)
+        traceduration = self.format_string(self.traceduration, 10**-9, 1)
+        tracetimeB = self.format_string(self.tracetimeaftertrigB, 10**-9, 1)
+        tracedurationB = self.format_string(self.tracedurationB, 10**-9, 1)
+
         for t, d in ((time,duration), (timeB,durationB), (tracetime,traceduration), (tracetimeB,tracedurationB)):
             if len(t) != len(d):
                 test = False
@@ -103,23 +103,33 @@ class DemodAlazarTask(InstrumentTask):
             traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
                            cleandoc('''All measurements are disabled.''')
 
-        if self.IQtracemode:
-            if (len(time) != 1) or (len(timeB) != 1):
+        timestep = self.format_string(self.timestep, 10**-9, len(time))
+        timestepB = self.format_string(self.timestepB, 10**-9, len(timeB))
+        freq = self.format_string(self.freq, 10**6, len(time))
+        freqB = self.format_string(self.freqB, 10**6, len(timeB))
+        samplesPerSec = 500000000.0
+        
+        if 0 in duration:
+            duration = []
+            timestep = []
+            freq = []
+        if 0 in durationB:
+            durationB = []
+            timestepB = []
+            freqB = []
+        
+        for d, ts in zip(duration+durationB, timestep+timestepB):
+            if ts and np.mod(int(samplesPerSec*d), int(samplesPerSec*ts)):
                 test = False
                 traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                cleandoc('''In IQtrace mode, a single time step and initial time is required, not a list of them''')
-            elif tablesamplingtime[0] / 1000.0 * float(self.format_and_eval_string(self.freq)) % 1.0 != 0.0:
+                   cleandoc('''The number of samples in "IQ time step" must divide the number of samples in "Duration".''')
+
+        for f, ts in zip(freq+freqB, timestep+timestepB):
+            if ts and np.mod(f*int(samplesPerSec*ts), samplesPerSec):
                 test = False
                 traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                cleandoc('''Please modify the IQtrace time step so that 
-                            it corresponds to an integer number of periods
-                            in the demodulation.''')
-            elif tablesamplingtimeB[0] / 1000.0 * float(self.format_and_eval_string(self.freqB)) % 1.0 != 0.0:
-                test = False
-                traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                cleandoc('''Please modify the IQtrace time step so that 
-                            it corresponds to an integer number of periods
-                            in the demodulation.''')
+                   cleandoc('''The "IQ time step" does not cover an integer number of demodulation periods.''')
+        
         return test, traceback
 
     def perform(self):
@@ -136,33 +146,14 @@ class DemodAlazarTask(InstrumentTask):
         recordsPerCapture = self.format_and_eval_string(self.tracesnumber)
         recordsPerBuffer = int(self.format_and_eval_string(self.tracesbuffer))
 
-        if self.IQtracemode:
-            if (self.format_and_eval_string(self.duration) == 0 or self.format_and_eval_string(self.samplingtime) == 0):
-                timeA = []
-            else:
-                timeA = \
-                    np.arange(self.format_and_eval_string(self.timeaftertrig)*10.0**-9,
-                              self.format_and_eval_string(self.duration)*10.0**-9,
-                              self.format_and_eval_string(self.samplingtime)*10.0**-9).tolist()
-            if (self.format_and_eval_string(self.durationB) == 0 or self.format_and_eval_string(self.samplingtimeB) == 0):
-                timeB = []
-            else:            
-                timeB = \
-                    np.arange(self.format_and_eval_string(self.timeaftertrigB)*10.0**-9,
-                              self.format_and_eval_string(self.durationB)*10.0**-9,
-                              self.format_and_eval_string(self.samplingtimeB)*10.0**-9).tolist()
-            durationA = [self.format_and_eval_string(self.samplingtime)*10.0**-9] * len(timeA)
-            durationB = [self.format_and_eval_string(self.samplingtimeB)*10.0**-9] * len(timeB)
-        else:
-            timeA = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.timeaftertrig.split(',')]
-            durationA = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.duration.split(',')]
-            timeB = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.timeaftertrigB.split(',')]
-            durationB = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.durationB.split(',')]
-
-        tracetimeA = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.tracetimeaftertrig.split(',')]
-        tracedurationA = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.traceduration.split(',')]
-        tracetimeB = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.tracetimeaftertrigB.split(',')]
-        tracedurationB = [self.format_and_eval_string(elem)*10.0**-9 for elem in self.tracedurationB.split(',')]
+        timeA = self.format_string(self.timeaftertrig, 10**-9, 1)
+        durationA = self.format_string(self.duration, 10**-9, 1)
+        timeB = self.format_string(self.timeaftertrigB, 10**-9, 1)
+        durationB = self.format_string(self.durationB, 10**-9, 1)
+        tracetimeA = self.format_string(self.tracetimeaftertrig, 10**-9, 1)
+        tracedurationA = self.format_string(self.traceduration, 10**-9, 1)
+        tracetimeB = self.format_string(self.tracetimeaftertrigB, 10**-9, 1)
+        tracedurationB = self.format_string(self.tracedurationB, 10**-9, 1)
 
         NdemodA = len(durationA)
         if 0 in durationA:
@@ -188,13 +179,16 @@ class DemodAlazarTask(InstrumentTask):
         startaftertrig = timeA + timeB + tracetimeA + tracetimeB
         duration = durationA + durationB + tracedurationA + tracedurationB
 
-        freqA = self.format_and_eval_string(self.freq)*10.0**6
-        freqB = self.format_and_eval_string(self.freqB)*10.0**6
-        freq = [freqA] * NdemodA + [freqB] * NdemodB
+        timestepA = self.format_string(self.timestep, 10**-9, NdemodA)
+        timestepB = self.format_string(self.timestepB, 10**-9, NdemodB)
+        timestep = timestepA + timestepB
+        freqA = self.format_string(self.freq, 10**6, NdemodA)
+        freqB = self.format_string(self.freqB, 10**6, NdemodB)
+        freq = freqA + freqB
         
         answerDemod, answerTrace = self.driver.get_demod(startaftertrig, duration,
                                        recordsPerCapture, recordsPerBuffer,
-                                       freq, self.average,
+                                       timestep, freq, self.average,
                                        NdemodA, NdemodB, NtraceA, NtraceB)
                                               
         self.write_in_database('Demod', answerDemod)
