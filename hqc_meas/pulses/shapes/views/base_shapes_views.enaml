@@ -44,7 +44,7 @@ enamldef ModulationView(SplitItem):
                     QtLineCompleter: freq_val:
                         hug_width = 'ignore'
                         text := modulation.frequency
-#                        entries_updater << item.parent.get_bindable_vars
+                        entries_updater << item.parent.get_bindable_vars
                         tool_tip = EVALUATER_TOOLTIP
                     ObjectCombo: freq_un:
                         items = list(modulation.get_member('frequency_unit').items)
@@ -58,7 +58,7 @@ enamldef ModulationView(SplitItem):
                     QtLineCompleter: phase_val:
                         hug_width = 'ignore'
                         text := modulation.phase
-#                        entries_updater << item.parent.get_bindable_vars
+                        entries_updater << item.parent.get_bindable_vars
                         tool_tip = EVALUATER_TOOLTIP
                     ObjectCombo: phase_un:
                         items = list(modulation.get_member('phase_unit').items)
@@ -85,7 +85,7 @@ enamldef SquareShapeView(SplitItem):
 
 
 enamldef GaussianShapeView(SplitItem):
-    """ View for a square pulse.
+    """ View for a gaussian pulse.
 
     """
     attr item
@@ -114,15 +114,5 @@ enamldef GaussianShapeView(SplitItem):
                         text := shape.width
                         entries_updater << item.parent.get_bindable_vars
                         tool_tip = 'Standard deviation of the gaussian'
-            SplitItem:
-                Container:
-                    constraints << [hbox(center_lab, center_val),
-                                    align('v_center', center_lab, center_val)]
-                    Label: center_lab:
-                        text = 'Center'
-                    QtLineCompleter: center_val:
-                        text := shape.center
-                        entries_updater << item.parent.get_bindable_vars
-                        tool_tip = 'Time of the center of the gaussian'
 
 SHAPES_VIEWS = {'SquareShape': SquareShapeView, 'GaussianShape': GaussianShapeView}

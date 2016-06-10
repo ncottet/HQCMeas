@@ -25,32 +25,15 @@ enamldef ArbitraryShapeView(SplitItem):
     attr shape
 
     GroupBox:
-        constraints = [hbox(formula_lab, formula_val, edit_val),
-                       align('v_center', formula_lab, formula_val, edit_val)]
+#        constraints = [hbox(formula_lab, formula_val, edit_val),
+#                       align('v_center', formula_lab, formula_val, edit_val)]
+#        constraints = [hbox(edit_val),
+#                       align('v_center', edit_val)]
 
-        Label: formula_lab:
-            text = 'Formula'
-        QtLineCompleter: formula_val:
-            text := shape.formula
-        PushButton: edit_val:
-            text = 'Edit'
-            clicked :: _FormulaEditionView().show()
-
-
-enamldef _FormulaEditionView(PopupView): popup
-
-
-    attr item
-    attr shape
-
-    Container:
         MultilineField: multiline:
-            QtLineCompleter: formula_val:
-                text := shape.formula
-                tool_tip = 'Formula of the pulse shape (numpy can be called as np)'
-        PushButton: validate_val:
-            text = 'Validate'
-            clicked :: close()
+            text:= shape.formula
+            #QtLineCompleter: formula_val:
+            tool_tip = 'Formula of the pulse shape (numpy can be called as np)'
 
 
 SHAPES_VIEWS = {'ArbitraryShape': ArbitraryShapeView}

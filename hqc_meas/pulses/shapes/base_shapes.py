@@ -150,7 +150,6 @@ class GaussianShape(AbstractShape):
     """
 
     amplitude = Str('1.0').tag(pref=True)
-    center = Str('').tag(pref=True)
     width = Str('').tag(pref=True)
 
     def eval_entries(self, sequence_locals, missing, errors, index):
@@ -181,23 +180,17 @@ class GaussianShape(AbstractShape):
         # Computing amplitude, width and center
         amp = None
         width = None
-        center = None
         try:
             amp = eval_entry(self.amplitude, sequence_locals, missing)
             width = eval_entry(self.width, sequence_locals, missing)
-            center = eval_entry(self.center, sequence_locals, missing)
-
         except Exception as e:
             errors[prefix + 'amplitude'] = repr(e)
             errors[prefix + 'width'] = repr(e)
-            errors[prefix + 'center'] = repr(e)
         if amp is not None:
             self._amplitude = amp
             if width is not None:
                 self._width = width
-                if center is not None:
-                    self._center = center
-                    return True
+                return True
         else:
             return False
 
@@ -219,12 +212,11 @@ class GaussianShape(AbstractShape):
             Amplitude of the pulse.
 
         """
-        return float(self._amplitude)*np.exp(-np.square(time-self._center)/(2.0*self._width**2))
+        return self._amplitude*np.exp(-np.square(time-(time[0]+time[-1])/2)/(2*self._width**2))
 
     # --- Private API ---------------------------------------------------------
 
     _amplitude = FloatRange(-1.0, 1.0, 1.0)
     _width = Float()
-    _center = Float()
 
 SHAPES = [SquareShape, GaussianShape]
