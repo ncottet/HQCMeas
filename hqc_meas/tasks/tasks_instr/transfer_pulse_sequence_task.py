@@ -135,7 +135,7 @@ class AWGTransferInterface(InstrTaskInterface):
     #: Generic name to use for the sequence (the number of the channel will be
     #: appended automatically).
     sequence_name = Str().tag(pref=True)
-    
+
     #: Flag indicating whether or not initialisation has been performed.
     initialized = Bool(False)
 
@@ -189,7 +189,7 @@ class AWGTransferInterface(InstrTaskInterface):
 
         """
         return context.__class__.__name__ == 'AWGContext'
- 
+
 
 
 INTERFACES = {'TransferPulseSequenceTask': [AWGTransferInterface]}

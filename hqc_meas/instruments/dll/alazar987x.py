@@ -9,9 +9,9 @@
 This module defines drivers for Alazar using DLL Library.
 
 :Contains:
-    Alazar935x
+    Alazar987x
 
-To read well the Dll of the Alazar9351, Visual C++ Studio is needed.
+To read well the Dll of the Alazar9870, Visual C++ Studio is needed.
 
 """
 import os
@@ -20,8 +20,6 @@ import math
 import numpy as np
 import ctypes
 from inspect import cleandoc
-
-import inspect
 
 from pyclibrary import CLibrary
 
@@ -88,14 +86,14 @@ class DMABuffer:
             raise Exception("Unsupported OS")
 
 
-class Alazar935x(DllInstrument):
+class Alazar987x(DllInstrument):
 
     library = 'ATSApi.dll'
 
     def __init__(self, connection_info, caching_allowed=True,
                  caching_permissions={}, auto_open=True):
 
-        super(Alazar935x, self).__init__(connection_info, caching_allowed,
+        super(Alazar987x, self).__init__(connection_info, caching_allowed,
                                          caching_permissions, auto_open)
 
         cache_path = unicode(os.path.join(os.path.dirname(__file__),
@@ -104,8 +102,6 @@ class Alazar935x(DllInstrument):
                              ['AlazarError.h', 'AlazarCmd.h', 'AlazarApi.h'],
                              cache=cache_path, prefix=['Alazar'],
                              convention='windll')
-#        print os.path.join(os.path.dirname(__file__),'ATSApi.dll')      
-#        self._dll = ctypes.CDLL(os.path.join(os.path.dirname(__file__),'ATSApi.dll'))
 
     def open_connection(self):
         """Do not need to open a connection
@@ -120,16 +116,15 @@ class Alazar935x(DllInstrument):
         pass
 
     def configure_board(self):
-        print 'configuring'
         board = self._dll.GetBoardBySystemID(1,1)()
         # TODO: Select clock parameters as required to generate this
         # sample rate
-        samplesPerSec = 500000000.0
+        samplesPerSec = 1000000000.0
         self._dll.SetCaptureClock(board,
                                   self._dll.EXTERNAL_CLOCK_10MHz_REF,
-                                  500000000,
+                                  1000000000,
                                   self._dll.CLOCK_EDGE_RISING,
-                                  0)
+                                  1)
         # TODO: Select channel A input parameters as required.
         self._dll.InputControl(board,
                                self._dll.CHANNEL_A,
@@ -150,9 +145,6 @@ class Alazar935x(DllInstrument):
         # TODO: Select channel B bandwidth limit as required.
         self._dll.SetBWLimit(board, self._dll.CHANNEL_B, 0)
         # TODO: Select trigger inputs and levels as required.
-        trigLevel = 0.3 # in Volts
-        trigRange = 2.5 # in Volts (Set in SetExternalTrigger() below)
-        trigCode = int(128 + 127 * trigLevel / trigRange)
         self._dll.SetTriggerOperation(board, self._dll.TRIG_ENGINE_OP_J,
                                       self._dll.TRIG_ENGINE_J,
                                       self._dll.TRIG_EXTERNAL,
@@ -165,7 +157,7 @@ class Alazar935x(DllInstrument):
 
         # TODO: Select external trigger parameters as required.
         self._dll.SetExternalTrigger(board, self._dll.DC_COUPLING,
-                                     self._dll.ETR_2V5)
+                                     self._dll.ETR_5V)
 
         # TODO: Set trigger delay as required.
         triggerDelay_sec = 0.
@@ -194,7 +186,7 @@ class Alazar935x(DllInstrument):
         board = self._dll.GetBoardBySystemID(1, 1)()
 
         # Number of samples per record: must be divisible by 32
-        samplesPerSec = 500000000.0
+        samplesPerSec = 1000000000.0
         samplesPerTrace = int(samplesPerSec * np.max(np.array(startaftertrig) + np.array(duration)))
         if samplesPerTrace % 32 == 0:
             samplesPerRecord = int(samplesPerTrace)
@@ -216,8 +208,7 @@ class Alazar935x(DllInstrument):
 
         # For converting data into volts
         channelRange = 0.4 # Volts
-        bitsPerSample = 12
-        bitShift = 4
+        bitsPerSample = 8
         code = (1 << (bitsPerSample - 1)) - 0.5
 
         bufferCount = int(round(recordsPerCapture / recordsPerBuffer))
@@ -229,7 +220,7 @@ class Alazar935x(DllInstrument):
         self._dll.SetRecordSize(board, 0, samplesPerRecord)
 
         # Configure the number of records in the acquisition
-        acquisition_timeout_sec = 10
+#        acquisition_timeout_sec = 10
         self._dll.SetRecordCount(board, int(recordsPerCapture))
 
         # Calculate the number of buffers in the acquisition
@@ -251,11 +242,6 @@ class Alazar935x(DllInstrument):
 
         start = time.clock()  # Keep track of when acquisition started
         self._dll.StartCapture(board)  # Start the acquisition
-
-        if time.clock() - start > acquisition_timeout_sec:
-            self._dll.AbortCapture()
-            raise Exception("Error: Capture timeout. Verify trigger")
-            time.sleep(10e-3)
 
         # Preparation of the tables for the demodulation
 
@@ -305,10 +291,10 @@ class Alazar935x(DllInstrument):
             buffer = buffers[buffersCompleted % len(buffers)]
             self._dll.WaitAsyncBufferComplete(board, buffer.addr, 10000)
 
+
             # Process data
 
             dataRaw = np.reshape(buffer.buffer, (recordsPerBuffer*channel_number, -1))
-            dataRaw = dataRaw >> bitShift
 
             for i in np.arange(NdemodA):
                 dataExtended[i][:,:samplesPerDemod[i]] = dataRaw[:recordsPerBuffer,startSample[i]:startSample[i]+samplesPerDemod[i]]
@@ -337,6 +323,9 @@ class Alazar935x(DllInstrument):
             buffer.__exit__()
 
         print time.clock() - start
+#        if time.clock() - start > acquisition_timeout_sec:
+#            raise Exception("Error: Capture timeout. Verify trigger")
+#            time.sleep(10e-3)
 
         # Normalize the np.sum and convert data into Volts
         for i in range(NdemodA + NdemodB):
@@ -430,7 +419,7 @@ class Alazar935x(DllInstrument):
         board = self._dll.GetBoardBySystemID(1, 1)()
 
         # Number of samples per record: must be divisible by 32
-        samplesPerSec = 500000000.0
+        samplesPerSec = 1000000000.0
         samplesPerTrace = samplesPerSec*timeaftertrig
         if samplesPerTrace % 32 == 0:
             samplesPerRecord = int(samplesPerTrace)
@@ -523,4 +512,209 @@ class Alazar935x(DllInstrument):
         return (dataA, dataB)
 
 
-DRIVERS = {'Alazar935x': Alazar935x}
+    def get_phase(self, startaftertrig, duration, recordsPerCapture,
+                  recordsPerBuffer, timestep, freq, average, Ndemod, Npoints):
+
+        board = self._dll.GetBoardBySystemID(1, 1)()
+
+        # Number of samples per record: must be divisible by 32
+        samplesPerSec = 1000000000.0
+        samplesPerTrace = int(samplesPerSec * np.max(np.array(startaftertrig) + np.array(duration)))
+        if samplesPerTrace % 32 == 0:
+            samplesPerRecord = int(samplesPerTrace)
+        else:
+            samplesPerRecord = int((samplesPerTrace)/32 + 1)*32
+
+        retCode = self._dll.GetChannelInfo(board)()
+        bitsPerSample = self._dll.GetChannelInfo(board)[1]
+        if retCode != self._dll.ApiSuccess:
+            raise ValueError(cleandoc(self._dll.AlazarErrorToText(retCode)))
+
+        # Compute the number of bytes per record and per buffer
+        channel_number = 2  # Acquisition on A and B
+        ret, (boardhandle, memorySize_samples,
+              bitsPerSample) = self._dll.GetChannelInfo(board)
+        bytesPerSample = (bitsPerSample + 7) // 8
+        bytesPerRecord = bytesPerSample * samplesPerRecord
+        bytesPerBuffer = int(bytesPerRecord * recordsPerBuffer*channel_number)
+
+        # For converting data into volts
+        channelRange = 0.4 # Volts
+        bitsPerSample = 8
+        code = (1 << (bitsPerSample - 1)) - 0.5
+
+        bufferCount = int(round(recordsPerCapture / recordsPerBuffer))
+        buffers = []
+        for i in range(bufferCount):
+            buffers.append(DMABuffer(bytesPerSample, bytesPerBuffer))
+
+        # Set the record size
+        self._dll.SetRecordSize(board, 0, samplesPerRecord)
+
+        # Configure the number of records in the acquisition
+#        acquisition_timeout_sec = 10
+        self._dll.SetRecordCount(board, int(recordsPerCapture))
+
+        # Calculate the number of buffers in the acquisition
+        buffersPerAcquisition = round(recordsPerCapture / recordsPerBuffer)
+
+        channelSelect = 3
+        self._dll.BeforeAsyncRead(board, channelSelect,  # Channels A & B
+                                  0,
+                                  samplesPerRecord,
+                                  int(recordsPerBuffer),
+                                  int(recordsPerCapture),
+                                  self._dll.ADMA_EXTERNAL_STARTCAPTURE |
+                                  self._dll.ADMA_NPT)()
+
+        # Post DMA buffers to board. ATTENTION it is very important not to do "for buffer in buffers"
+        for i in range(bufferCount):
+            buffer = buffers[i]
+            self._dll.PostAsyncBuffer(board, buffer.addr, buffer.size_bytes)
+
+        start = time.clock()  # Keep track of when acquisition started
+        self._dll.StartCapture(board)  # Start the acquisition
+
+        # Preparation of the tables for the demodulation
+
+        startSample = []
+        samplesPerDemod = []
+        samplesPerBlock = []
+        NumberOfBlocks = []
+        samplesMissing = []
+        data = []
+        dataExtended = []
+
+        for i in range(2*Ndemod):
+            startSample.append( int(samplesPerSec * startaftertrig[i%Ndemod]) )
+            samplesPerDemod.append( int(samplesPerSec * duration[i%Ndemod]) )
+
+            if timestep[i%Ndemod]:
+                samplesPerBlock.append( samplesPerDemod[i%Ndemod] )
+            else:
+                # Check wheter it is possible to cut each record in blocks of size equal
+                # to an integer number of periods
+                periodsPerBlock = 1
+                while (periodsPerBlock * samplesPerSec < freq[i%Ndemod] * samplesPerDemod[i%Ndemod]
+                       and periodsPerBlock * samplesPerSec % freq[i%Ndemod]):
+                    periodsPerBlock += 1
+                samplesPerBlock.append( int(np.minimum(periodsPerBlock * samplesPerSec / freq[i%Ndemod],
+                                                      samplesPerDemod[i%Ndemod])) )
+
+            NumberOfBlocks.append( np.divide(samplesPerDemod[i%Ndemod], samplesPerBlock[i%Ndemod]) )
+            samplesMissing.append( (-samplesPerDemod[i%Ndemod]) % samplesPerBlock[i%Ndemod] )
+            # Makes the table that will contain the data
+            data.append( np.empty((recordsPerCapture, samplesPerBlock[i%Ndemod])) )
+            dataExtended.append( np.zeros((recordsPerBuffer, samplesPerDemod[i%Ndemod] + samplesMissing[i%Ndemod]),
+                                          dtype='uint16') )
+
+        start = time.clock()
+
+        buffersCompleted = 0
+        while buffersCompleted < buffersPerAcquisition:
+
+            # Wait for the buffer at the head of the list of available
+            # buffers to be filled by the board.
+            buffer = buffers[buffersCompleted % len(buffers)]
+            self._dll.WaitAsyncBufferComplete(board, buffer.addr, 10000)
+
+
+            # Process data
+
+            dataRaw = np.reshape(buffer.buffer, (recordsPerBuffer*channel_number, -1))
+
+            for i in np.arange(Ndemod):
+                dataExtended[i][:,:samplesPerDemod[i]] = dataRaw[:recordsPerBuffer,startSample[i]:startSample[i]+samplesPerDemod[i]]
+                dataBlock = np.reshape(dataExtended[i],(recordsPerBuffer,-1,samplesPerBlock[i]))
+                data[i][buffersCompleted*recordsPerBuffer:(buffersCompleted+1)*recordsPerBuffer] = np.sum(dataBlock, axis=1)
+
+            for i in (np.arange(Ndemod) + Ndemod):
+                dataExtended[i][:,:samplesPerDemod[i]] = dataRaw[(channel_number-1)*recordsPerBuffer:channel_number*recordsPerBuffer,startSample[i]:startSample[i]+samplesPerDemod[i]]
+                dataBlock = np.reshape(dataExtended[i],(recordsPerBuffer,-1,samplesPerBlock[i]))
+                data[i][buffersCompleted*recordsPerBuffer:(buffersCompleted+1)*recordsPerBuffer] = np.sum(dataBlock, axis=1)
+
+            buffersCompleted += 1
+
+            self._dll.PostAsyncBuffer(board, buffer.addr, buffer.size_bytes)
+
+        self._dll.AbortAsyncRead(board)
+
+        for i in range(bufferCount):
+            buffer = buffers[i]
+            buffer.__exit__()
+
+        print time.clock() - start
+#        if time.clock() - start > acquisition_timeout_sec:
+#            raise Exception("Error: Capture timeout. Verify trigger")
+#            time.sleep(10e-3)
+
+        # Normalize the np.sum and convert data into Volts
+        for i in range(2*Ndemod):
+            normalisation = 1 if samplesMissing[i] else 0
+            data[i][:,:samplesPerBlock[i]-samplesMissing[i]] /= NumberOfBlocks[i] + normalisation
+            data[i][:,samplesPerBlock[i]-samplesMissing[i]:] /= NumberOfBlocks[i]
+            data[i] = (data[i] / code - 1) * channelRange
+
+        # calculate demodulation tables
+        coses=[]
+        sines=[]
+        for i in range(Ndemod):
+            dem = np.arange(samplesPerBlock[i])
+            coses.append(np.cos(2. * math.pi * dem * freq[i] / samplesPerSec))
+            sines.append(np.sin(2. * math.pi * dem * freq[i] / samplesPerSec))
+
+        # prepare the structure of the answered array
+
+        answerTypeDemod = []
+        zerosDemod = 1 + int(np.floor(np.log10(Ndemod)))
+        for i in range(Ndemod):
+            answerTypeDemod += [('Phase' + str(i).zfill(zerosDemod), str(data[0].dtype)),
+                                ('Magnitude' + str(i).zfill(zerosDemod), str(data[0].dtype))]
+        lengthDemod = [(samplesPerDemod[i]/int(samplesPerSec*timestep[i]) if timestep[i] else 1) for i in range(Ndemod)]
+        biggerDemod = max(lengthDemod)
+        
+        if (average and Npoints == 0.0):
+            answerDemod = np.zeros(biggerDemod, dtype=answerTypeDemod)
+        elif average:
+            answerDemod = np.zeros((biggerDemod, Npoints), dtype=answerTypeDemod)
+        else:
+            answerDemod = np.zeros((recordsPerCapture, biggerDemod), dtype=answerTypeDemod)
+
+        # Demodulate the data, average them if asked and return the result
+
+        for i in np.arange(Ndemod):
+            Phasestring = 'Phase' + str(i).zfill(zerosDemod)
+            Magstring = 'Magnitude' + str(i).zfill(zerosDemod)
+            
+            if average and Npoints == 0:
+                data[i] = np.mean(data[i], axis=0)
+                ansAI = 2 * np.mean((data[i]*coses[i]).reshape(lengthDemod[i], -1), axis=1)
+                ansAQ = 2 * np.mean((data[i]*sines[i]).reshape(lengthDemod[i], -1), axis=1)
+                ansBI = 2 * np.mean((data[i+Ndemod]*coses[i]).reshape(lengthDemod[i], -1), axis=1)
+                ansBQ = 2 * np.mean((data[i+Ndemod]*sines[i]).reshape(lengthDemod[i], -1), axis=1)
+                
+                answerDemod[Phasestring][:lengthDemod[i]] = np.arctan2((ansAI*ansBQ-ansAQ*ansBI),(ansAI*ansBI+ansAQ*ansBQ))
+                answerDemod[Magstring][:lengthDemod[i]] = np.sqrt(ansAI**2+ansAQ**2)
+                
+            elif average:
+                data[i] = np.split(data[i], Npoints)
+                data[i] = np.mean(data[i], axis=0)
+                ansAI = 2 * np.mean((data[i]*coses[i]).reshape(Npoints*lengthDemod[i], -1), axis=1)
+                ansAQ = 2 * np.mean((data[i]*sines[i]).reshape(Npoints*lengthDemod[i], -1), axis=1)
+                ansBI = 2 * np.mean((data[i+Ndemod]*coses[i]).reshape(Npoints*lengthDemod[i], -1), axis=1)
+                ansBQ = 2 * np.mean((data[i+Ndemod]*sines[i]).reshape(Npoints*lengthDemod[i], -1), axis=1)               
+
+                answerDemod[Phasestring][:lengthDemod[i]] = np.arctan2((ansAI*ansBQ-ansAQ*ansBI),(ansAI*ansBI+ansAQ*ansBQ))
+                answerDemod[Magstring][:lengthDemod[i]] = np.sqrt(ansAI**2+ansAQ**2)
+            else:
+                ansAI = 2 * np.mean((data[i]*coses[i]).reshape(lengthDemod[i], -1), axis=2)
+                ansAQ = 2 * np.mean((data[i]*sines[i]).reshape(lengthDemod[i], -1), axis=2)
+                ansBI = 2 * np.mean((data[i+Ndemod]*coses[i]).reshape(lengthDemod[i], -1), axis=2)
+                ansBQ = 2 * np.mean((data[i+Ndemod]*sines[i]).reshape(lengthDemod[i], -1), axis=2)
+                
+                answerDemod[Phasestring][:lengthDemod[i]] = np.arctan2((ansAI*ansBQ-ansAQ*ansBI),(ansAI*ansBI+ansAQ*ansBQ))
+                answerDemod[Magstring][:lengthDemod[i]] = np.sqrt(ansAI**2+ansAQ**2)
+
+        return answerDemod
+        
+DRIVERS = {'Alazar987x': Alazar987x}

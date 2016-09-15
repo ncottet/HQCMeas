@@ -92,8 +92,10 @@ class AWGContext(BaseContext):
             stop_index = start_index + len(waveform)
 
             if channeltype == 'A' and pulse.kind == 'Analogical':
+#                array_analog[channel][start_index:stop_index] +=\
+#                    np.rint(8191*waveform)
                 array_analog[channel][start_index:stop_index] +=\
-                    np.rint(8191*waveform)
+                    (np.rint(8191*waveform)).astype(np.uint16)
             elif channeltype == 'M1' and pulse.kind == 'Logical':
                 array_M1[channel][start_index:stop_index] += waveform
             elif channeltype == 'M2' and pulse.kind == 'Logical':
