@@ -16,7 +16,8 @@ enamldef AWGStartView(BaseInstrumentView): view:
 
     title << task.task_name
     constraints = [factory(auto_grid_layout),
-                         driv.width == prof.width]
+                         driv.width == prof.width,
+                         on_off.width == driv.width]
     
     Label: driv:
         text = 'Driver'
@@ -29,5 +30,11 @@ enamldef AWGStartView(BaseInstrumentView): view:
     ObjectCombo: prof_val:
         items << sorted(profiles)
         selected := task.selected_profile
+        
+    Label: on_off:
+        text = 'On / Off'
+    Field: on_off_val:
+        text := task.on_off
+        tool_tip = fill(cleandoc('0 for OFF, 1 for ON'))
 
 TASK_VIEW_MAPPING = {'AWGStartTask' : AWGStartView}
