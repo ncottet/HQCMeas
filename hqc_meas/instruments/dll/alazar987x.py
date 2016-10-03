@@ -576,6 +576,7 @@ class Alazar987x(DllInstrument):
         start = time.clock()  # Keep track of when acquisition started
         self._dll.StartCapture(board)  # Start the acquisition
 
+        print 'Alazar waiting for trigger'
         # Preparation of the tables for the demodulation
 
         startSample = []

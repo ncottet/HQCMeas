@@ -100,14 +100,7 @@ class TransferPulseLoopTask(InterfaceableTaskMixin, InstrumentTask):
             else:
                 test = False
                 traceback[err_path+'seq'] = 'No interface or sequence'
-                
-        for k, v in self.sequence_vars.items():
-            if type(self.format_and_eval_string(v)) == str and v not in loop_names:
-                print loop_names
-                test = False
-                traceback[err_path+'seq'] = 'Loop parameter key not found'
-
-            
+        
         return test, traceback
 
     def compile_sequence(self, loop_names, value):
@@ -116,15 +109,14 @@ class TransferPulseLoopTask(InterfaceableTaskMixin, InstrumentTask):
         """
         for k, v in self.sequence_vars.items():
             if np.size(value) == 1:
-                if v in loop_names:
-                    self.sequence.external_vars[k] = value
-                else:
-                    self.sequence.external_vars[k] = self.format_and_eval_string(v)
+                if loop_names[0] in v:
+                    v = v.replace(loop_names[0], str(value))   
             else:
-                if v in loop_names:
-                    self.sequence.external_vars[k] = value[loop_names.index(v)]
-                else:
-                    self.sequence.external_vars[k] = self.format_and_eval_string(v)
+                for p in range(np.size(value)):
+                    if loop_names[p] in v:
+                        v = v.replace(loop_names[p], value[p])
+                        
+            self.sequence.external_vars[k] = self.format_and_eval_string(v)
         return self.sequence.compile_sequence()
 
     def answer(self, members, callables):
@@ -198,8 +190,8 @@ class AWGTransferLoopInterface(InstrTaskInterface):
     interface_database_entries = {'sequence_name': ''}
 
     def perform(self):
-        """Compile and transfer the sequence into the AWG. Turn off the AWG in
-        case it was still running.
+        """Compile and transfer the sequence into the AWG. Automatically
+        turn off the AWG.
         """
         task = self.task
         if not task.driver:
