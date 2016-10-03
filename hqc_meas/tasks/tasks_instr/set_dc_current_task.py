@@ -62,9 +62,7 @@ class SetDCCurrentTask(InterfaceableTaskMixin, InstrumentTask):
         if not self.driver:
             self.start_driver()
         if self.driver.owner != self.task_name:
-            self.driver.owner = self.task_name
-            print self.driver.function
-            
+            self.driver.owner = self.task_name            
             if hasattr(self.driver, 'function') and\
                     self.driver.function != 'CURR':
                 log = logging.getLogger()
@@ -76,6 +74,7 @@ class SetDCCurrentTask(InterfaceableTaskMixin, InstrumentTask):
         setter = lambda value: setattr(self.driver, 'current', value)
         current_value = getattr(self.driver, 'current')
         
+        print 'Setting current'
         self.smooth_set(value, setter, current_value)
 
     def smooth_set(self, target_value, setter, current_value):
