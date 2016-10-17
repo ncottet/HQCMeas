@@ -118,6 +118,8 @@ enamldef TransferPulseLoopView(BaseTransferLoopView): view:
                          hbox(channel, channel_val, param_keys, param_keys_val,
                             param_start, param_start_val, param_stop, 
                             param_stop_val, param_points, param_points_val),
+                         hbox(wait_trig, wait_trig_val, internal_trig, 
+                              internal_trig_val, trig_period, trig_period_val),
                          *cnd.items)]
 
     Label:  driver_lab:
@@ -212,6 +214,23 @@ enamldef TransferPulseLoopView(BaseTransferLoopView): view:
                         are needed, separate the values by a comma. 
                         Do not put a space after the commas.
                         ''')
+                        
+    Label: wait_trig:
+        text = 'Wait for trigger'
+    CheckBox: wait_trig_val:
+        checked := task.wait_trigger
+    
+    Label: internal_trig:
+        text = 'Internal trigger'
+    CheckBox: internal_trig_val:
+        checked := task.internal_trigger
+        
+    Label: trig_period:
+        text = 'Trigger period (mus)'
+    QtLineCompleter: trig_period_val:
+        entries_updater << task.accessible_database_entries
+        text := task.trigger_period
+        tool_tip = EVALUATER_TOOLTIP
 
     Conditional: cnd:
         condition << bool(task.sequence)

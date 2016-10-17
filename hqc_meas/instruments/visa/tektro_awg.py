@@ -501,9 +501,9 @@ class AWG(VisaInstrument):
         """getter for trigger internal or external
         """        
         ore = self.ask("TRIGGER:SEQUENCE:SOURCE?")
-        if ore == 'EXT':
+        if ore == 'INT':
             return 'True'
-        elif ore == 'INT':
+        elif ore == 'EXT':
             return 'False'
         else:
             raise InstrIOError    

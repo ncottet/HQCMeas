@@ -39,6 +39,15 @@ class TransferPulseLoopTask(InterfaceableTaskMixin, InstrumentTask):
     loop_stop = Str().tag(pref=True)
 
     loop_points = Str().tag(pref=True)
+    
+    #: Check if each sequence has to wait for a trigger
+    wait_trigger = Bool().tag(pref=False)
+    
+    #: internal or external trigger
+    internal_trigger = Bool().tag(pref=False)
+
+    #: Internal trigger period in mus
+    trigger_period = Str().tag(pref=True)
       
     def intricate_loops(self, var_count, variables):
         loop_points = np.array(self.format_and_eval_string(self.loop_points))
@@ -206,8 +215,16 @@ class AWGTransferLoopInterface(InstrTaskInterface):
         Nwaveforms = np.product(loop_points)
         variables = np.empty((Nwaveforms, np.size(loop_names)))
         variables = task.intricate_loops(0, variables)
-                    
+         
         task.driver.clear_sequence()
+        
+        if task.wait_trigger:
+            if task.internal_trigger:
+                period = task.format_and_eval_string(task.trigger_period)*10**3
+                task.driver.internal_trigger = 'INT'
+                task.driver.internal_trigger_period = period
+            else:
+                task.driver.internal_trigger = 'EXT'
         
         for i in range(0, Nwaveforms):
             seq_name = task.format_string(self.sequence_name) if self.sequence_name else 'Sequence'
@@ -236,6 +253,8 @@ class AWGTransferLoopInterface(InstrTaskInterface):
             index_start = (i + 1)
             index_stop = (i + 1) % Nwaveforms + 1
             task.driver.set_goto_pos(index_start, index_stop)
+            if task.wait_trigger:
+                task.driver.set_trigger_pos(index_start)
            
         for ch_id in task.driver.defined_channels:
            if ch_id in seqs:
