@@ -292,9 +292,9 @@ class GaussianEdgeShape(AbstractShape):
         """
         out = np.ones(len(time))
         c = self._edge_width/(2*np.sqrt(2*np.log(2)))
-        gaussian = np.exp(-np.square(time-2 * self._edge_width)/(2*c**2))
-        out[time <= self._edge_width*2] = gaussian[time <= self._edge_width*2]
-        out[time >= len(time) - self._edge_width*2] = gaussian[(time>=self._edge_width*2)*(time<=self._edge_width*4)]
+        gaussian = np.exp(-np.square(time-time[0]-2 * self._edge_width)/(2*c**2))
+        out[time - time[0] <= self._edge_width*2] = gaussian[time-time[0] <= self._edge_width*2]
+        out[time - time[0] >= len(time) - self._edge_width*2] = gaussian[(time-time[0]>self._edge_width*2)*(time-time[0]<=self._edge_width*4)]
         
         return self._amplitude*out
 
