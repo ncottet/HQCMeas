@@ -118,8 +118,8 @@ enamldef TransferPulseLoopView(BaseTransferLoopView): view:
                          hbox(channel, channel_val, param_keys, param_keys_val,
                             param_start, param_start_val, param_stop, 
                             param_stop_val, param_points, param_points_val),
-                         hbox(wait_trig, wait_trig_val, internal_trig, 
-                              internal_trig_val, trig_period, trig_period_val),
+                         hbox(vbox(wait_trig, wait_trig_val),vbox(internal_trig, 
+                              internal_trig_val), trig_period, trig_period_val),
                          *cnd.items)]
 
     Label:  driver_lab:

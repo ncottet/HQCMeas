@@ -514,9 +514,9 @@ class AWG(VisaInstrument):
         """setter for internal trigger enable
         """
         if value in ('INT', 1, 'True'):
-            self.write('TRIGGER:SEQUENCE:SOURCE:INT')
+            self.write('TRIGGER:SEQUENCE:SOURCE INT')
         elif value in ('EXT', 0, 'False'):
-            self.write('TRIGGER:SEQUENCE:SOURCE:EXT')
+            self.write('TRIGGER:SEQUENCE:SOURCE EXT')
         else:
             mess = fill(cleandoc('''The invalid value {} was sent to
                                  internal_trigger method''').format(value), 80)
