@@ -62,12 +62,12 @@ class LoadArrayTask(InterfaceableTaskMixin, SimpleTask):
         if not test:
             return test, traceback
 
-        full_path = os.path.join(full_folder_path, filename)
-
-        if not os.path.isfile(full_path):
-            traceback[err_path + '-file'] = \
-                cleandoc('''File does not exist, be sure that your measurez
-                will create before this task is executed.''')
+#        full_path = os.path.join(full_folder_path, filename)
+#
+#        if not os.path.isfile(full_path):
+#            traceback[err_path + '-file'] = \
+#                cleandoc('''File does not exist, be sure that your measurez
+#                will create before this task is executed.''')
 
         return test, traceback
 

@@ -270,6 +270,8 @@ class PhaseAlazarTask(InstrumentTask):
     
     Npoints = Str('0').tag(pref=True)
     
+    decimation = Str('1').tag(pref=True)
+    
     driver_list = ['Alazar987x']
     
     parallel = set_default({'activated': True, 'pool': 'acq'})
@@ -289,19 +291,9 @@ class PhaseAlazarTask(InstrumentTask):
         test, traceback = super(PhaseAlazarTask, self).check(*args,
                                                              **kwargs)
 
-        if (self.format_and_eval_string(self.tracesnumber) %
-                self.format_and_eval_string(self.tracesbuffer) != 0 ):
-            test = False
-            traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                cleandoc('''The number of traces must be an integer multiple of the number of traces per buffer.''')
-                
-        if not (self.format_and_eval_string(self.tracesnumber) >= 1000):
-            test = False
-            traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
-                cleandoc('''At least 1000 traces must be recorded. Please make real measurements and not noisy s***.''')
-
         time = self.format_string(self.timeaftertrig, 10**-9, 1)
         duration = self.format_string(self.duration, 10**-9, 1)
+        decimation = int(self.format_and_eval_string(self.decimation))
 
         for t, d in ((time,duration),([0],[0])):
             if len(t) != len(d):
@@ -324,7 +316,13 @@ class PhaseAlazarTask(InstrumentTask):
             test = False
             traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
                            cleandoc('''Average needs to be set ON to average over different experiments''')
-                           
+        
+        if decimation not in (1,2,4) and decimation % 10 !=0:
+            test = False
+            traceback[self.task_path + '/' + self.task_name + '-get_demod'] = \
+                           cleandoc('''Decimation needs to be 1,2,4 or a multiple of 10 up to 100000''')     
+
+
         return test, traceback
 
     def perform(self):
@@ -336,7 +334,8 @@ class PhaseAlazarTask(InstrumentTask):
         if self.driver.owner != self.task_name:
             self.driver.owner = self.task_name
 
-        self.driver.configure_board()
+        decimation = int(self.format_and_eval_string(self.decimation))
+        self.driver.configure_board_decim(decimation)
 
         numberPoints = self.format_and_eval_string(self.Npoints)
         recordsPerCapture = self.format_and_eval_string(self.tracesnumber)
@@ -355,7 +354,8 @@ class PhaseAlazarTask(InstrumentTask):
 
         answerDemod = self.driver.get_phase(startaftertrig, duration,
                                        recordsTotal, recordsPerBuffer,
-                                       freq, self.average, Ndemod, numberPoints)
+                                       freq, self.average, Ndemod, 
+                                       numberPoints, decimation)
                                               
         self.write_in_database('Demod', answerDemod)
 

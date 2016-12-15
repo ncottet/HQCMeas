@@ -157,6 +157,8 @@ class AWGTransferInterface(InstrTaskInterface):
         if not task.driver:
             task.start_driver()
 
+        task.driver.run_mode = 'CONTINUOUS'
+
         seq_name = task.format_string(self.sequence_name) if self.sequence_name else 'Sequence'
         res, seqs = task.compile_sequence()
         if not res:
