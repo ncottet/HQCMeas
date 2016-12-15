@@ -8,10 +8,11 @@
 """
 from hqc_meas.tasks.api import (InstrumentTask)
 from inspect import cleandoc
-from atom.api import (Str)
+from atom.api import (Str,Bool)
 
 class AWGStartTask(InstrumentTask):
-    """Start or stop the AWG pulse sequence loop after setting the trigger as required. 
+    """Switch the AWG from Continuous to Sequence and vice versa.
+    Start or stop the AWG pulse sequence loop after setting the trigger as required. 
     Need to be called after Phase Alazar task (for turning on) or after 
     Phase Alazar Task is over (for turning off).
     """
@@ -19,6 +20,10 @@ class AWGStartTask(InstrumentTask):
     driver_list = ['AWG5014B']
     
     on_off = Str().tag(pref=True)
+    
+    cont = Bool().tag(pref=False)
+    
+    seq = Bool().tag(pref=True)
 
     def check(self, *args, **kwargs):
         """
@@ -30,7 +35,10 @@ class AWGStartTask(InstrumentTask):
             test = False
             traceback[self.task_path + '/' + self.task_name] = \
                                     cleandoc('''Enter 0 for OFF, 1 for ON''')
-        
+        if self.cont and self.seq:
+            test = False
+            traceback[self.task_path + '/' + self.task_name] = \
+                                    cleandoc('''Cannot select two modes at the same time''')
         return test, traceback
 
     def perform(self):
@@ -39,6 +47,12 @@ class AWGStartTask(InstrumentTask):
         """
         if not self.driver:
             self.start_driver()
+            
+        if self.cont:
+            self.driver.run_mode = 'CONTINUOUS'
+        elif self.seq:
+            self.driver.run_mode = 'SEQUENCE'
+        
         running_state = self.driver.running
         if self.on_off == '0':
             if running_state != '2 : Intrument is running':

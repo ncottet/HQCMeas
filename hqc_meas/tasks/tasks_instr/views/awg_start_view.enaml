@@ -36,5 +36,15 @@ enamldef AWGStartView(BaseInstrumentView): view:
     Field: on_off_val:
         text := task.on_off
         tool_tip = fill(cleandoc('0 for OFF, 1 for ON'))
+        
+    Label: cont:
+        text = 'Continuous'
+    CheckBox: cont_val:
+        checked := task.cont
+        
+    Label: seq:
+        text = 'Sequence'
+    CheckBox: seq_val:
+        checked := task.seq
 
 TASK_VIEW_MAPPING = {'AWGStartTask' : AWGStartView}

@@ -178,8 +178,73 @@ class Alazar987x(DllInstrument):
         self._dll.SetTriggerTimeOut(board, 0)
         # Configure AUX I/O connector as required
         self._dll.ConfigureAuxIO(board, self._dll.AUX_OUT_TRIGGER,
-                                 0)
 
+                                 0)
+    def configure_board_decim(self,decimation):
+        board = self._dll.GetBoardBySystemID(1,1)()
+        # TODO: Select clock parameters as required to generate this
+        # sample rate
+        samplesPerSec = 1000000000.0
+        self._dll.SetCaptureClock(board,
+                                  self._dll.EXTERNAL_CLOCK_10MHz_REF,
+                                  1000000000,
+                                  self._dll.CLOCK_EDGE_RISING,
+                                  decimation)
+        # TODO: Select channel A input parameters as required.
+        self._dll.InputControl(board,
+                               self._dll.CHANNEL_A,
+                               self._dll.DC_COUPLING,
+                               self._dll.INPUT_RANGE_PM_400_MV,
+                               self._dll.IMPEDANCE_50_OHM)
+
+        # TODO: Select channel A bandwidth limit as required.
+        self._dll.SetBWLimit(board, self._dll.CHANNEL_A, 0)
+
+
+        # TODO: Select channel B input parameters as required.
+        self._dll.InputControl(board, self._dll.CHANNEL_B,
+                               self._dll.DC_COUPLING,
+                               self._dll.INPUT_RANGE_PM_400_MV,
+                               self._dll.IMPEDANCE_50_OHM)
+
+        # TODO: Select channel B bandwidth limit as required.
+        self._dll.SetBWLimit(board, self._dll.CHANNEL_B, 0)
+        # TODO: Select trigger inputs and levels as required.
+        self._dll.SetTriggerOperation(board, self._dll.TRIG_ENGINE_OP_J,
+                                      self._dll.TRIG_ENGINE_J,
+                                      self._dll.TRIG_EXTERNAL,
+                                      self._dll.TRIGGER_SLOPE_POSITIVE,
+                                      138,
+                                      self._dll.TRIG_ENGINE_K,
+                                      self._dll.TRIG_DISABLE,
+                                      self._dll.TRIGGER_SLOPE_POSITIVE,
+                                      128)
+
+        # TODO: Select external trigger parameters as required.
+        self._dll.SetExternalTrigger(board, self._dll.DC_COUPLING,
+                                     self._dll.ETR_5V)
+
+        # TODO: Set trigger delay as required.
+        triggerDelay_sec = 0.
+        triggerDelay_samples = int(triggerDelay_sec * samplesPerSec + 0.5)
+        self._dll.SetTriggerDelay(board, triggerDelay_samples)
+
+        # TODO: Set trigger timeout as required.
+        #
+        # NOTE: The board will wait for a for this amount of time for a
+        # trigger event.  If a trigger event does not arrive, then the
+        # board will automatically trigger. Set the trigger timeout value
+        # to 0 to force the board to wait forever for a trigger event.
+        #
+        # IMPORTANT: The trigger timeout value should be set to zero after
+        # appropriate trigger parameters have been determined, otherwise
+        # the board may trigger if the timeout interval expires before a
+        # hardware trigger event arrives.
+        self._dll.SetTriggerTimeOut(board, 0)
+        # Configure AUX I/O connector as required
+        self._dll.ConfigureAuxIO(board, self._dll.AUX_OUT_TRIGGER,
+                                 0)
+                                  
     def get_demod(self, startaftertrig, duration, recordsPerCapture,
                   recordsPerBuffer, timestep, freq, average, NdemodA, NdemodB, NtraceA, NtraceB):
 
@@ -322,7 +387,7 @@ class Alazar987x(DllInstrument):
             buffer = buffers[i]
             buffer.__exit__()
 
-        print time.clock() - start
+#        print time.clock() - start
 #        if time.clock() - start > acquisition_timeout_sec:
 #            raise Exception("Error: Capture timeout. Verify trigger")
 #            time.sleep(10e-3)
@@ -358,7 +423,6 @@ class Alazar987x(DllInstrument):
                                     ('BQ' + str(i).zfill(zerosDemodB), str(data[0].dtype))]
             lengthDemod = [(samplesPerDemod[i]/int(samplesPerSec*timestep[i]) if timestep[i] else 1) for i in range(NdemodA+NdemodB)]
             biggerDemod = max(lengthDemod)
-            print lengthDemod
         else:
             answerTypeDemod = 'f'
             biggerDemod = 0
@@ -514,18 +578,18 @@ class Alazar987x(DllInstrument):
 
 
     def get_phase(self, startaftertrig, duration, recordsPerCapture,
-                  recordsPerBuffer, freq, average, Ndemod, Npoints):
+                  recordsPerBuffer, freq, average, Ndemod, Npoints, decimation):
 
         board = self._dll.GetBoardBySystemID(1, 1)()
 
         # Number of samples per record: must be divisible by 32
-        samplesPerSec = 1000000000.0
+        samplesPerSec = 1000000000.0/decimation
         samplesPerTrace = int(samplesPerSec * np.max(np.array(startaftertrig) + np.array(duration)))
         if samplesPerTrace % 32 == 0:
             samplesPerRecord = int(samplesPerTrace)
         else:
             samplesPerRecord = int((samplesPerTrace)/32 + 1)*32
-
+        
         retCode = self._dll.GetChannelInfo(board)()
         bitsPerSample = self._dll.GetChannelInfo(board)[1]
         if retCode != self._dll.ApiSuccess:
@@ -576,7 +640,7 @@ class Alazar987x(DllInstrument):
         start = time.clock()  # Keep track of when acquisition started
         self._dll.StartCapture(board)  # Start the acquisition
 
-        print 'Alazar waiting for trigger'
+#        print 'Alazar waiting for trigger'
         # Preparation of the tables for the demodulation
 
         startSample = []
@@ -641,7 +705,7 @@ class Alazar987x(DllInstrument):
             buffer = buffers[i]
             buffer.__exit__()
 
-        print time.clock() - start
+#        print time.clock() - start
 #        if time.clock() - start > acquisition_timeout_sec:
 #            raise Exception("Error: Capture timeout. Verify trigger")
 #            time.sleep(10e-3)
@@ -694,11 +758,13 @@ class Alazar987x(DllInstrument):
                 
             elif average:
                 data[i] = data[i].reshape(recordsPerCapture/Npoints,Npoints,samplesPerBlock[i])
+                data[i+Ndemod] = data[i+Ndemod].reshape(recordsPerCapture/Npoints,Npoints,samplesPerBlock[i])
                 data[i] = np.mean(data[i], axis=0)
-                ansAI = 2 * np.mean((data[i]*coses[i]).reshape(Npoints, -1), axis=1)
-                ansAQ = 2 * np.mean((data[i]*sines[i]).reshape(Npoints, -1), axis=1)
-                ansBI = 2 * np.mean((data[i+Ndemod]*coses[i]).reshape(Npoints, -1), axis=1)
-                ansBQ = 2 * np.mean((data[i+Ndemod]*sines[i]).reshape(Npoints, -1), axis=1)               
+                data[i+Ndemod] = np.mean(data[i+Ndemod], axis=0)
+                ansAI = 2 * np.mean((data[i]*coses[i]).reshape(Npoints,-1), axis=1)
+                ansAQ = 2 * np.mean((data[i]*sines[i]).reshape(Npoints,-1), axis=1)
+                ansBI = 2 * np.mean((data[i+Ndemod]*coses[i]).reshape(Npoints,-1), axis=1)
+                ansBQ = 2 * np.mean((data[i+Ndemod]*sines[i]).reshape(Npoints,-1), axis=1)
                 
                 answerDemod[Phasestring][:1] = np.arctan2((ansAI*ansBQ-ansAQ*ansBI),(ansAI*ansBI+ansAQ*ansBQ))
                 answerDemod[Magstring][:1] = np.sqrt(ansAI**2+ansAQ**2)
