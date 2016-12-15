@@ -237,7 +237,11 @@ class ArrayFitTask(SimpleTask):
         else:
             guess_list = self.format_and_eval_string(self.guess)
 
-        result , error = opt.curve_fit(fitting_function, x_data, y_data, guess_list)
+        try:
+            result , error = opt.curve_fit(fitting_function, x_data, y_data, guess_list)
+        except RuntimeError:
+            result = guess_list
+            print 'WARNING: fit failed, guess used instead'
 
         self.write_in_database('fit', result)
 

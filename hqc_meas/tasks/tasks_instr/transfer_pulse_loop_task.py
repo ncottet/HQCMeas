@@ -205,6 +205,8 @@ class AWGTransferLoopInterface(InstrTaskInterface):
         task = self.task
         if not task.driver:
             task.start_driver()
+            
+        task.driver.run_mode = 'SEQUENCE'
         
         loopable_ch = task.format_and_eval_string(task.loopable_channels)
         loopable_ch = np.array(loopable_ch)
