@@ -1,0 +1,21 @@
+Configuration of the acquisition board
+0.00243245285859	getting board's address
+0.0693362585385		setting capture clock
+0.148858588369		setting input channels
+0.0184024809091		setting trigger operations
+---
+Acquisition and demodulation of the signal
+0.000264052228224	getting board's address
+0.00218892765871	initializing the acquisition
+0.000110099515655	preparing buffers
+0.00104812250779	preparing acquisition
+0.270658510179		acquiring data
+0.00996462819798	exiting buffers
+0.226506116277		data processing : converting, averaging
+---
+total configuration time
+0.184019521826
+total acquisition time
+0.542613644316
+database write-time
+0.000284890272148

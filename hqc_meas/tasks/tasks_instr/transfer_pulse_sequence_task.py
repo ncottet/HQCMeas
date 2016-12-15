@@ -135,7 +135,7 @@ class AWGTransferInterface(InstrTaskInterface):
     #: Generic name to use for the sequence (the number of the channel will be
     #: appended automatically).
     sequence_name = Str().tag(pref=True)
-    
+
     #: Flag indicating whether or not initialisation has been performed.
     initialized = Bool(False)
 
@@ -157,7 +157,7 @@ class AWGTransferInterface(InstrTaskInterface):
         if not task.driver:
             task.start_driver()
 
-        seq_name = self.sequence_name if self.sequence_name else 'Sequence'
+        seq_name = task.format_string(self.sequence_name) if self.sequence_name else 'Sequence'
         res, seqs = task.compile_sequence()
         if not res:
             mess = 'Failed to compile the pulse sequence: missing {}, errs {}'
@@ -189,7 +189,7 @@ class AWGTransferInterface(InstrTaskInterface):
 
         """
         return context.__class__.__name__ == 'AWGContext'
- 
+
 
 
 INTERFACES = {'TransferPulseSequenceTask': [AWGTransferInterface]}

@@ -204,8 +204,8 @@ class Yokogawa7651(VisaInstrument):
 
     Attributes
     ----------
-    voltage : float, instrument_property
-        Voltage at the output of the generator in volts.
+    current : float, instrument_property
+        Current at the output of the generator in mA.
     function : str, instrument_property
         Current function of the generator can be either 'VOLT' or 'CURR' (case
         insensitive).
@@ -227,6 +227,19 @@ class Yokogawa7651(VisaInstrument):
         else:
             raise InstrIOError('Instrument did not return the voltage')
 
+    @instrument_property
+    @secure_communication()            
+    def current(self):
+        """Current getter method.
+
+        """
+        data = self.ask("OD")
+        current = float(data[4::])
+        if current is not None:
+            return current
+        else:
+            raise InstrIOError('Instrument did not return the current')
+
     @voltage.setter
     @secure_communication()
     def voltage(self, set_point):
@@ -239,6 +252,19 @@ class Yokogawa7651(VisaInstrument):
         #to avoid floating point rouding
         if abs(value - round(set_point, 9)) > 10**-9:
             raise InstrIOError('Instrument did not set correctly the voltage')
+
+    @current.setter
+    @secure_communication()            
+    def current(self, set_point):
+        """Current setter method.
+
+        """
+        self.write("S{}, E".format(set_point))
+        data = self.ask("OD")
+        value = float(data[4::])
+        #to avoid floating point rouding
+        if abs(value - round(set_point, 9)) > 10**-9:
+            raise InstrIOError('Instrument did not set correctly the current')
 
     @instrument_property
     @secure_communication()
@@ -275,7 +301,14 @@ class Yokogawa7651(VisaInstrument):
             if value[3] != 'V':
                 raise InstrIOError('Instrument did not set correctly the mode')
         elif curr.match(mode):
-            self.write('F5E')
+            self.write('OS')
+            self.read()
+            current_range = self.read()[2:4]
+            # Empty output buffer.
+            self.read()
+            self.read()
+            self.read()
+            self.write('F5{}E'.format(current_range))
             value = self.ask('OD')
             if value[3] != 'A':
                 raise InstrIOError('Instrument did not set correctly the mode')
