@@ -75,7 +75,6 @@ class HewlettPackard8276A(VisaInstrument):
     def frequency(self, value):
         """Frequency setter method
         """
-        self.write('REN')
         unit = self.frequency_unit
         if unit == 'GHz':
             value = value*10**6
@@ -102,11 +101,11 @@ class HewlettPackard8276A(VisaInstrument):
     def power(self, value):
         """Power setter method
         """
-        self.write('REN')
-        if value > 3 or value < - 120:
+        if value > 13 or value < - 120:
             mess = fill(cleandoc('''Instrument cannot set the 
                         requested power''').format(value), 80)
             raise VisaTypeError(mess)
+        value = value - 10
         if value > 0:
             self.write('K0L'+str(int(3-value)))
         else:
@@ -131,13 +130,12 @@ class HewlettPackard8276A(VisaInstrument):
     def output(self, value):
         """Output setter method
         """
-        self.write('REN')
         on = re.compile('on', re.IGNORECASE)
         off = re.compile('off', re.IGNORECASE)
         if on.match(value) or value == 1:
-            self.write('O1')
+            self.write('O3')
         elif off.match(value) or value == 0:
-            self.write('O0')
+            self.write('O2')
         else:
             mess = fill(cleandoc('''The invalid value {} was sent to
                         switch_on_off method''').format(value), 80)
